@@ -396,6 +396,9 @@ body.portrait #firewallContainer > div > span:nth-of-type(4) {
 #firewallContainer > div > span.bRule {
     background-color: rgba(192, 0, 0, 0.3);
     }
+#firewallContainer > div > span.mRule {
+    background-color: rgba(192, 160, 0, 0.3);
+    }
 #firewallContainer.colorBlind > div > span.bRule {
     background-color: rgba(0, 19, 110, 0.4);
     }

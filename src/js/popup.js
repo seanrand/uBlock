@@ -78,7 +78,7 @@ if ( dfPaneVisibleStored ) {
 var popupData = {};
 var dfPaneBuilt = false;
 var reIP = /^\d+(?:\.\d+){1,3}$/;
-var reSrcHostnameFromRule = /^d[abn]:([^ ]+) ([^ ]+) ([^ ]+)/;
+var reSrcHostnameFromRule = /^d[abnm]:([^ ]+) ([^ ]+) ([^ ]+)/;
 var scopeToSrcHostnameMap = {
     '/': '*',
     '.': ''
@@ -236,6 +236,9 @@ var updateFirewallCell = function(scope, des, type, rule) {
     if ( action !== '' ) {
         cell.toggleClass(action + 'Rule', true);
     }
+    if ( rule === 'm' ) {
+        cell.toggleClass(rule + 'Rule', true);
+    }
 
     // Use dark shade visual cue if the filter is specific to the cell.
     var ownRule = false;
@@ -299,6 +302,55 @@ var updateFirewallCell = function(scope, des, type, rule) {
 /******************************************************************************/
 
 var updateAllFirewallCells = function() {
+
+    var is3rdParty = function(key) {
+      var hostname = key.split(' ')[1];
+      if ( hostname.slice(0 - popupData.pageDomain.length) !== popupData.pageDomain ) {
+          return true;
+      }
+      return false;
+    }
+
+    var getRuleOp = function(key) {
+      var rule = rules[key];
+      if (rule !== '')
+        return (rule.slice(rule.lastIndexOf(' ') + 1))
+      else
+        // no rule for this key equals noop
+        return 'noop';
+    }
+
+    var isMixedRule = function(key) {
+      if ( is3rdParty(key) ) {
+        var tp = getRuleOp('. * 3p');
+        var tps = getRuleOp('. * 3p-script');
+        var tpf = getRuleOp('. * 3p-frame');
+        if ( tp === 'allow' && (tps === 'block' || tpf === 'block') ||
+             tp === 'block' && (tps === 'allow' || tpf === 'allow') ||
+             tp === 'noop' && (tps === 'block' || tpf === 'block')) {
+            return true;
+        }
+      } else {
+        var is = getRuleOp('. * inline-script');
+        var fps = getRuleOp('. * 1p-script');
+        if ( is === 'block' && popupData.pageHostname === key.split(' ')[1] || fps === 'block' ) {
+          return true;
+        }
+      }
+      return false;
+    }
+
+    var isMixedRuleCell = function(key) {
+        // if local key & not any origin type key
+        if ( key.charAt(0) === '.' && key.split(' ')[1] !== '*' ) {
+          // if rule exists & is any origin type rule, it might be mixed
+          if ( rules[key] === '' || rules[key] !== '' && rules[key].split(' ')[1] === '*') {
+            return isMixedRule(key);
+          }
+        }
+        return false;
+    }
+
     var rules = popupData.firewallRules;
     for ( var key in rules ) {
         if ( rules.hasOwnProperty(key) === false ) {
@@ -308,7 +360,7 @@ var updateAllFirewallCells = function() {
             key.charAt(0),
             key.slice(2, key.indexOf(' ', 2)),
             key.slice(key.lastIndexOf(' ') + 1),
-            rules[key]
+            (isMixedRuleCell(key) ? rules[key].slice(0, 1) + 'm' + rules[key].slice(2) : rules[key])
         );
     }
 
